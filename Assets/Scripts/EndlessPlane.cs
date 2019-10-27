@@ -26,6 +26,7 @@ public class EndlessPlane : MonoBehaviour
 
     public void init()
     {
+        reset();
         speed = originalSpeed;
         isPaused = false;
         // planes = GameObject.FindGameObjectsWithTag("Plane");
@@ -33,6 +34,7 @@ public class EndlessPlane : MonoBehaviour
         float zValue = 0;
         for(int i = 0; i< planes.Length; i++) {
             planes[i] = Instantiate(planePrefab, new Vector3(0,-1,zValue), Quaternion.identity);
+            planes[i].transform.SetParent(transform);
             zValue += planes[i].transform.localScale.z*10;
         }
 
@@ -41,6 +43,16 @@ public class EndlessPlane : MonoBehaviour
         zPlaneHeight = planes[0].transform.localScale.z * 10;
         currentPlaneIndex = 0;
         unAccessedTravelledDistance = 0;
+    }
+
+     public void reset()
+    {
+        if(planes == null) {
+            return;
+        }
+        for(int i = 0; i< planes.Length; i++) {
+            Destroy(planes[i]);
+        }
     }
 
     // Update is called once per frame

@@ -45,7 +45,7 @@ public class PlayerController : MonoBehaviour
     private Quaternion defRot;
     private Vector3 defScale;
     private bool invincibleModeActivated;
- 
+
 
     // Start is called before the first frame update
     void Start()
@@ -137,17 +137,22 @@ public class PlayerController : MonoBehaviour
     }
 
     private void moveHorizontal()
-    {   
+    {
         float horizontal = Input.GetAxis("Horizontal");
-        if(swipeLeft) {
+        if (swipeLeft)
+        {
             movingDirection = -1.0f;
             initOneMovement();
             swipeLeft = false;
-        } else if(swipeRight) {
+        }
+        else if (swipeRight)
+        {
             movingDirection = 1.0f;
             initOneMovement();
             swipeRight = false;
-        } else if(horizontal != 0) {
+        }
+        else if (horizontal != 0)
+        {
             movingDirection = horizontal > 0 ? 1.0f : -1.0f;
             initOneMovement();
         }
@@ -162,7 +167,7 @@ public class PlayerController : MonoBehaviour
             {
                 toBeMovedAmount += unMovedAmount;
                 unMovedAmount = 0;
-                
+
             }
             // Debug.Log("toBeMoved, UnMoved = " + toBeMovedAmount + " "  + unMovedAmount);
             Vector3 movement = new Vector3(movingDirection * toBeMovedAmount, 0.0f, 0.0f);
@@ -176,9 +181,10 @@ public class PlayerController : MonoBehaviour
         passedTimeMoved += Time.deltaTime;
     }
 
-    private void initOneMovement() {
-        if(unMovedAmount == 0 && passedTimeMoved > 0.3)
-        {   
+    private void initOneMovement()
+    {
+        if (unMovedAmount == 0 && passedTimeMoved > 0.3)
+        {
             // Debug.Log("movingDirection = " + " " + movingDirection);
             if (currentLane != movingDirection)
             {
@@ -193,7 +199,7 @@ public class PlayerController : MonoBehaviour
 
     private void updateSwipes()
     {
-        tap = swipeLeft = swipeRight = false;
+        tap = swipeLeft = swipeRight = swipeUp = false;
         # region Mobile Inputs
         if (Input.touches.Length > 0)
         {
@@ -211,30 +217,40 @@ public class PlayerController : MonoBehaviour
                 resetSwipes();
             }
         }
-        
+        #endregion
         // Calculate Distance
         swipeDelta = Vector2.zero;
-        if(isDragging) {
-            if(Input.touches.Length > 0) {
-                swipeDelta = Input.touches[0].position = startTouch;
+        if (isDragging)
+        {
+            if (Input.touches.Length > 0)
+            {
+                swipeDelta = Input.touches[0].position - startTouch;
             }
         }
         // Did cross allowed zone
-        if(swipeDelta.magnitude > swipingMinMagnitude) {
+        if (swipeDelta.magnitude > swipingMinMagnitude)
+        {
             float x = swipeDelta.x;
             float y = swipeDelta.y;
-            if(Mathf.Abs(x) > Mathf.Abs(y)) {
-                if(x < 0) {
+            if (Mathf.Abs(x) > Mathf.Abs(y))
+            {
+                if (x < 0)
+                {
                     // Debug.Log("Swiped left");
                     swipeLeft = true;
                     swipeRight = swipeUp = false;
-                } else {
+                }
+                else
+                {
                     // Debug.Log("Swiped Right");
                     swipeRight = true;
                     swipeLeft = swipeUp = false;
                 }
-            } else {
-                if(y > 0) {
+            }
+            else
+            {
+                if (y > 0)
+                {
                     // Debug.Log("Swiped Up");
                     swipeUp = true;
                     swipeLeft = swipeRight = false;
@@ -242,7 +258,6 @@ public class PlayerController : MonoBehaviour
             }
             resetSwipes();
         }
-        # endregion
     }
 
     private void resetSwipes()
@@ -250,14 +265,15 @@ public class PlayerController : MonoBehaviour
         isDragging = false;
         startTouch = swipeDelta = Vector2.zero;
     }
-    
+
 
     private void OnTriggerEnter(Collider other)
     {
-        if(invincibleModeActivated) {
+        if (invincibleModeActivated)
+        {
             return;
         }
-        
+
         hitGameObject = other.gameObject;
         if (hitGameObject.CompareTag("Coin"))
         {
@@ -270,7 +286,7 @@ public class PlayerController : MonoBehaviour
         else if (hitGameObject.CompareTag("BoostSphere"))
         {
             disableItem(hitGameObject);
-            gameController.updateScoreBoost(1);
+            gameController.updateScoreBoost(10);
             audioSource.PlayOneShot(boostSphereClip);
             // Debug.Log("Score boost should be updated +1");
             if (gameController.getScoreBoost() == gameController.getMaxBoostValue())
@@ -330,6 +346,12 @@ public class PlayerController : MonoBehaviour
     public void pause()
     {
         isPaused = true;
+    }
+
+    public void mute(bool isMuted) {
+        if(audioSource != null) {
+            audioSource.mute = isMuted;
+        }
     }
 
 }

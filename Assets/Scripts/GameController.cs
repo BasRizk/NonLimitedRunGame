@@ -2,14 +2,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class GameController : MonoBehaviour
 {
-    public AudioClip highSpeedMusic;
+    public AudioClip invicibleModeMusic;
+    public AudioClip startGameMusic;
     public AudioClip regularMusic;
-    public AudioClip gameOverClip;
+    public AudioClip gameOverMusic;
+    public AudioClip pauseMusic;
+
     public AudioClip startGameClip;
     public AudioClip pressBtnClip;
+    public AudioClip pauseClip;
+    public AudioClip unPauseClip;
     public Camera firstPersonViewCamera;
     public Camera thirdPersonViewCamera;
     public Canvas startCanvas;
@@ -17,16 +23,20 @@ public class GameController : MonoBehaviour
     public Canvas pauseCanvas;
     public Canvas gameOverCanvas;
     public Canvas creditsCanvas;
+    public Canvas howToCanvas;
+    public TextMeshProUGUI muteText;
     public Text gameOverScoreText;
     public Text timeText;
     public Text scoreText;
     public Text boostTitleText;
     public Text boostText;
     public int timeLimit;
-    public int maxBoostValue;
+    public float maxBoostValue;
     public int invicibleModeTime;
 
-    private int scoreBoost;
+    public Image boostMeterImage;
+    public Image statusBarImage;
+    private float scoreBoost;
     private int timePastLastScoreBoost;
     private int leftTime;
     private int currentScore;
@@ -41,10 +51,13 @@ public class GameController : MonoBehaviour
     public GameObject jumpGameObject;
     private bool[] gameStatus;
     // GameStatus [StartScreen, CreditsScreen, RunningScreen, PauseScreen, GameOverScreen];
-
     private bool isGameOver;
+    private bool isGameMuted;
     private bool windowsUsed;
     private AudioSource audioSource;
+    public AudioSource audioSourceEffect;
+    public AudioSource audioSourcePause;
+    private bool notFirstInvincibleMode;
     void Awake()
     {
         initStatus();
@@ -54,18 +67,21 @@ public class GameController : MonoBehaviour
     void Start()
     {
         audioSource = GetComponent<AudioSource>();
+        notFirstInvincibleMode = false;
+        isGameMuted = false;
+        muteText.text = "Mute";
         if(SystemInfo.operatingSystem.Contains("Windows")) {
             Debug.Log("Windows is used, removing unneccessary buttons");
             windowsUsed = true;
         } else {
             windowsUsed = false;
         }
-        getMainMenu();
+        onClickMainMenu();
     }
 
     private void initStatus()
     {
-        gameStatus = new bool[5];
+        gameStatus = new bool[6];
         for (int i = 0; i < gameStatus.Length; i++)
         {
             gameStatus[i] = false;
@@ -82,9 +98,12 @@ public class GameController : MonoBehaviour
         invincibleModeActivated = false;
         isGameOver = false;
         updateStatusUI();
+        audioSource.Stop();
         audioSource.clip = regularMusic;
         audioSource.loop = true;
         audioSource.Play();
+        onClickResume();
+
     }
 
     private void updateStatusUI()
@@ -96,6 +115,7 @@ public class GameController : MonoBehaviour
             boostText.enabled = true;
             if (invincibleModeActivated)
             {
+                statusBarImage.color = new Color32(245, 27, 27, 100);
                 boostText.text = "INVICIBLE";
             }
             else
@@ -105,13 +125,22 @@ public class GameController : MonoBehaviour
         }
         else
         {
+            statusBarImage.color = new Color32(37, 5, 31, 100);
             boostText.text = "0/" + maxBoostValue;
         }
+
+        updateBoostMeterImage();
 
         if(windowsUsed) {
             jumpGameObject.SetActive(false);
             camSwitchGameObject.SetActive(false);
         }
+    }
+
+    private void updateBoostMeterImage() {
+        boostMeterImage.enabled = true;
+        boostMeterImage.transform.localScale = new Vector3(scoreBoost/maxBoostValue, 1.0f, 1.0f);
+        // Debug.Log("boostMeterImage localscale.x should be " + scoreBoost/maxBoostValue);
     }
 
     // Update is called once per frame
@@ -173,7 +202,7 @@ public class GameController : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            pauseGame();
+            onClickPause();
         }
         else if (Input.GetKeyDown(KeyCode.C))
         {
@@ -203,6 +232,16 @@ public class GameController : MonoBehaviour
     public void turnInvincibleMode()
     {
         // Debug.Log("turnInvincibleMode", this);
+        audioSource.Pause();
+        audioSourceEffect.clip = invicibleModeMusic;
+        audioSourceEffect.loop = true;
+        if(notFirstInvincibleMode) {
+            audioSourceEffect.UnPause();
+        } else {
+            audioSourceEffect.Play();
+            notFirstInvincibleMode = true;
+        }
+
         invincibleModeActivated = true;
         invicibleModeTimeLeft = invicibleModeTime;
         gamePlane.speed = gamePlane.speed*2;
@@ -212,6 +251,8 @@ public class GameController : MonoBehaviour
     private void deactivateInvinicibleMode()
     {
         // Debug.Log("deactivateInvincibleMode", this);
+        audioSourceEffect.Pause();
+        audioSource.UnPause();
         scoreBoost = 0;
         invincibleModeActivated = false;
         gamePlane.speed = gamePlane.originalSpeed;
@@ -219,7 +260,15 @@ public class GameController : MonoBehaviour
 
         playerController.deactivateInvinicibleMode();
     }
-
+    private void disableTheRestUI(Canvas oneCanvas) {
+        startCanvas.enabled = false;
+        runningCanvas.enabled = false;
+        gameOverCanvas.enabled = false;
+        howToCanvas.enabled = false;
+        creditsCanvas.enabled = false;
+        pauseCanvas.enabled = false;
+        oneCanvas.enabled = true;
+    }
     public void gameOver()
     {
         // TODO Game Over screen should be displayed.
@@ -227,93 +276,136 @@ public class GameController : MonoBehaviour
         // TODO kill player and show score
         audioSource.Stop();
         audioSource.loop = false;
-        gameOverCanvas.enabled = true;
+        audioSource.clip = gameOverMusic;
+        audioSource.Play();
+        audioSource.loop = true;
+        
+        disableTheRestUI(gameOverCanvas);
         gameOverScoreText.text = currentScore.ToString();
-        runningCanvas.enabled = false;
-
+        
         itemsSpawner.enabled = false;
         playerController.enabled = false;
         gamePlane.enabled = false;
-
         isGameOver = true;
         updateGameStatus("GameOverScreen");
     }
-
-    public void getMainMenu()
+    public void onClickMainMenu()
     {
-        startCanvas.enabled = true;
-        runningCanvas.enabled = false;
-        gameOverCanvas.enabled = false;
-        creditsCanvas.enabled = false;
-        pauseCanvas.enabled = false;
+        // Debug.Log("gameStatus[1] = " + gameStatus[1]);
+        if(!audioSource.isPlaying || !gameStatus[5] || !gameStatus[1]) {
+            audioSource.clip = startGameMusic;
+            audioSource.Play();
+            audioSource.loop = true;
+        }
 
-        gamePlane.enabled = false;
-        playerController.enabled = false;
-        itemsSpawner.enabled = false;
+        audioSource.PlayOneShot(pressBtnClip);
 
-        updateGameStatus("StartScreen");
-    }
-    public void startGame()
-    {
-        runningCanvas.enabled = true;
-        startCanvas.enabled = false;
 
-        gamePlane.enabled = true;
-        playerController.enabled = true;
-        itemsSpawner.enabled = true;
-
-        gamePlane.init();
-        playerController.init();
-        itemsSpawner.reinit();
-        initRunningGameStats();
-        updateGameStatus("RunningScreen");
-    }
-
-    public void openCredits()
-    {
-        creditsCanvas.enabled = true;
-        startCanvas.enabled = false;
-        updateGameStatus("CreditsScreen");
-    }
-
-    public void restartGame()
-    {
-        // TODO
-        runningCanvas.enabled = true;
-        pauseCanvas.enabled = false;
-        gameOverCanvas.enabled = false;
-
-        playerController.enabled = true;
-        gamePlane.enabled = true;
-        itemsSpawner.enabled = true;
-
-        gamePlane.init();
-        playerController.init();
-        itemsSpawner.reinit();
-        initRunningGameStats();
-        updateGameStatus("RunningScreen");
-    }
-
-    public void pauseGame()
-    {
         gamePlane.pause();
         playerController.pause();
         itemsSpawner.pause();
-        pauseCanvas.enabled = true;
-        runningCanvas.enabled = false;
-        updateGameStatus("PauseScreen");
+        
+        disableTheRestUI(startCanvas);
+        gamePlane.enabled = false;
+        playerController.enabled = false;
+        itemsSpawner.enabled = false;
+        updateGameStatus("StartScreen");
+    }
+    public void onClickStart()
+    {
+        audioSource.PlayOneShot(startGameClip);
+        disableTheRestUI(runningCanvas);
+
+        gamePlane.enabled = true;
+        playerController.enabled = true;
+        itemsSpawner.enabled = true;
+
+        gamePlane.init();
+        playerController.init();
+        itemsSpawner.reinit();
+        initRunningGameStats();
+        onClickResume();
+        updateGameStatus("RunningScreen");
+    }
+    public void onClickCredits()
+    {
+        audioSource.PlayOneShot(pressBtnClip);
+        disableTheRestUI(creditsCanvas);
+        updateGameStatus("CreditsScreen");
     }
 
-    public void resumeGame()
+    public void onClickRestart()
     {
-        gamePlane.unPause();
-        playerController.unPause();
-        itemsSpawner.unPause();
-        runningCanvas.enabled = true;
-        pauseCanvas.enabled = false;
+        audioSource.PlayOneShot(startGameClip);
+        disableTheRestUI(runningCanvas);
+
+        playerController.enabled = true;
+        gamePlane.enabled = true;
+        itemsSpawner.enabled = true;
+
+        gamePlane.init();
+        playerController.init();
+        itemsSpawner.reinit();
+        initRunningGameStats();
         updateGameStatus("RunningScreen");
     }
 
+    public void onClickPause()
+    {
+        audioSource.Pause();
+        audioSourcePause.PlayOneShot(pauseClip);
+        audioSourcePause.clip = pauseMusic;
+        audioSourcePause.loop = true;
+        audioSourcePause.Play();
+
+        disableTheRestUI(pauseCanvas);
+
+        gamePlane.pause();
+        playerController.pause();
+        itemsSpawner.pause();
+
+        updateGameStatus("PauseScreen");
+    }
+
+    public void onClickResume()
+    {
+        audioSourcePause.Pause();
+        audioSource.PlayOneShot(unPauseClip);
+        audioSource.UnPause();
+
+        disableTheRestUI(runningCanvas);
+
+        gamePlane.unPause();
+        playerController.unPause();
+        itemsSpawner.unPause();
+        updateGameStatus("RunningScreen");
+    }
+
+    public void onClickMute() {
+        audioSource.PlayOneShot(pressBtnClip);
+        if(isGameMuted) {
+            audioSource.mute = false;
+            playerController.mute(false);
+            isGameMuted = false;
+            muteText.text = "Mute";
+        } else {
+            audioSource.mute = true; 
+            playerController.mute(true);    
+            isGameMuted = true;
+            muteText.text = "Unmute";
+        }
+    }
+
+    public void onClickHowTo() {
+        audioSource.PlayOneShot(pressBtnClip);
+        disableTheRestUI(howToCanvas);
+        updateGameStatus("HowToScreen");
+    }
+
+    public void onClickQuit() {
+        audioSource.PlayOneShot(pressBtnClip);
+        Application.Quit();
+    }
     public void updateLeftTime(int updateValue)
     {
         // Debug.Log("Time value to be added = " + updateValue);
@@ -321,12 +413,12 @@ public class GameController : MonoBehaviour
         // Debug.Log("TimeLeft after addition = " + leftTime);
     }
 
-    public void updateScoreBoost(int value)
+    public void updateScoreBoost(float value)
     {
         scoreBoost += value;
     }
 
-    public int getScoreBoost()
+    public float getScoreBoost()
     {
         return scoreBoost;
     }
@@ -336,11 +428,10 @@ public class GameController : MonoBehaviour
         return leftTime;
     }
 
-    public int getMaxBoostValue()
+    public float getMaxBoostValue()
     {
         return maxBoostValue;
     }
-
 
     private void updateGameStatus(string status)
     {
@@ -361,6 +452,16 @@ public class GameController : MonoBehaviour
             case "GameOverScreen":
                 initStatus(); gameStatus[4] = true;
                 break;
+            case "HowToScreen":
+                initStatus(); gameStatus[5] = true;
+                break;
+        }
+    }
+
+    private void debugGameStatus() {
+        Debug.Log("GameStatus: ");
+        for(int i = 0 ; i < gameStatus.Length; i++) {
+            Debug.Log("GAMESTATUS[I] = " + gameStatus[i]);
         }
     }
 }

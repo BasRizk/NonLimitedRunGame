@@ -24,6 +24,7 @@ public class ItemsSpawner : MonoBehaviour
     private Queue<GameObject> ironBallsPool;
     private Queue<GameObject> bombsPool;
     private bool isPaused;
+    private GameObject lastItemAdded;
 
     // Start is called before the first frame update
     void Awake()
@@ -55,7 +56,10 @@ public class ItemsSpawner : MonoBehaviour
         lastAccessedCurrentPlaneIndex = gamePlane.getCurrentPlaneIndex();
         firstPassLimit = 0;
 
-        createSomeItems("Collectibles", gamePlane.getNextPlaneTransforms(1)[0]);
+        createSomeItems("ALL", gamePlane.getNextPlaneTransforms(1)[0]);
+        // lastItemAdded = createItemsOnRow(zPosReset,
+        //                  gamePlane.getNextPlaneTransforms(1)[0],
+        //                  "All");
         Debug.Log("z PosOriginMin, BackLimit = " + zPosReset + ", " + zBackLimit);
     }
 
@@ -105,80 +109,17 @@ public class ItemsSpawner : MonoBehaviour
             createSomeItems("All", gamePlane.getNextPlaneTransforms(1)[0]);
             lastAccessedCurrentPlaneIndex = currentPlan;
         }
-    }
 
-    private void createItemsOnRow(float z, Transform targetTransform, string type)
-    {
-        HashSet<float> pastXs = new HashSet<float>();
-        int numOfItemsInRow = Random.Range(1, 4);
-        for (int i = 0; i < numOfItemsInRow; i++)
-        {
-            float x = 0;
-            switch (Random.Range(-1, 2))
-            {
-                case -1: x = -1 * lineSpacing; break;
-                case 1: x = 1 * lineSpacing; break;
-                case 0: x = 0; break;
-            }
-
-            if(pastXs.Contains(x)) {
-                i--;
-                continue;
-            } else {
-                pastXs.Add(x);
-            }
-
-            if (type == "Collectibles")
-            {
-                switch (Random.Range(0, 2))
-                {
-                    case 0:
-                        addToItemsPool(x, z, "Coin", targetTransform);
-                        break;
-
-                    case 1:
-                        addToItemsPool(x, z, "BoostSphere", targetTransform);
-                        // targetPrefab = boostSpherePrefab; 
-                        break;
-                }
-            }
-            else if (type == "Obstacles")
-            {
-                // Obstacles
-                switch (Random.Range(0, 2))
-                {
-                    case 0:
-                        addToItemsPool(x, z, "IronBall", targetTransform);
-                        break;
-
-                    case 1:
-                        addToItemsPool(x, z, "Bomb", targetTransform);
-                        break;
-                }
-            }
-            else
-            {
-                switch (Random.Range(0, 4))
-                {
-                    case 0:
-                        addToItemsPool(x, z, "IronBall", targetTransform);
-                        break;
-                    case 1:
-                        addToItemsPool(x, z, "Bomb", targetTransform);
-                        break;
-                    case 2:
-                        addToItemsPool(x, z, "Coin", targetTransform);
-                        type = "Obstacles";
-                        break;
-                    case 3:
-                        addToItemsPool(x, z, "BoostSphere", targetTransform);
-                        type = "Obstacles";
-                        break;
-                }
-            }
-        }
+        // if(lastItemAdded != null && lastItemAdded.transform.position.z - step < zPosReset) {
+        //     Debug.Log("lastItemTransformed.transform.position.z " + lastItemAdded.transform.position.z);
+        //     Debug.Log("zPosReset " + zPosReset);
+        //     lastItemAdded = createItemsOnRow(zPosReset,
+        //                  gamePlane.getNextPlaneTransforms(1)[0],
+        //                  "All");
+        // }
 
     }
+
     private void createSomeItems(string type, Transform targetTransform)
     {
 
@@ -191,8 +132,95 @@ public class ItemsSpawner : MonoBehaviour
         }
     }
 
-    private void addToItemsPool(float x, float z, string type, Transform targetTransform)
+    private GameObject createItemsOnRow(float z, Transform targetTransform, string type)
     {
+        GameObject lastAddedObj = null;
+        HashSet<float> pastXs = new HashSet<float>();
+        int numOfItemsInRow = Random.Range(1, 4);
+        for (int i = 0; i < numOfItemsInRow; i++)
+        {
+            float x = 0;
+            switch (Random.Range(-1, 2))
+            {
+                case -1: x = -1 * lineSpacing; break;
+                case 1: x = 1 * lineSpacing; break;
+                case 0: x = 0; break;
+            }
+            if(pastXs.Contains(x)) {
+                Debug.Log("item already spawned at this position.");
+                i--;
+                continue;
+            } else {
+                Debug.Log("item to be spawn here, never spawned before.");
+                Debug.Log(pastXs.ToString());
+                pastXs.Add(x);
+            }
+
+            if (type == "Collectibles")
+            {
+                switch (Random.Range(0, 2))
+                {
+                    case 0:
+                        Debug.Log("Coin added");
+                        lastAddedObj = addToItemsPool(x, z, "Coin", targetTransform);
+                        break;
+
+                    case 1:
+                        Debug.Log("BoostSphere added");
+                        lastAddedObj = addToItemsPool(x, z, "BoostSphere", targetTransform);
+                        // targetPrefab = boostSpherePrefab; 
+                        break;
+                }
+            }
+            else if (type == "Obstacles")
+            {
+                // Obstacles
+                switch (Random.Range(0, 2))
+                {
+                    case 0:
+                        Debug.Log("IronBall added");
+                        lastAddedObj = addToItemsPool(x, z, "IronBall", targetTransform);
+                        break;
+
+                    case 1:
+                        Debug.Log("Bomb Added");
+                        lastAddedObj = addToItemsPool(x, z, "Bomb", targetTransform);
+                        break;
+                }
+            }
+            else
+            {
+                switch (Random.Range(0, 4))
+                {
+                    case 0:
+                        Debug.Log("IronBall added");
+                        lastAddedObj = addToItemsPool(x, z, "IronBall", targetTransform);
+                        break;
+                    case 1:
+                        Debug.Log("Bomb added");
+                        lastAddedObj = addToItemsPool(x, z, "Bomb", targetTransform);
+                        break;
+                    case 2:
+                        Debug.Log("Coin added");
+                        lastAddedObj = addToItemsPool(x, z, "Coin", targetTransform);
+                        type = "Obstacles";
+                        break;
+                    case 3:
+                        Debug.Log("BoostSphere added");
+                        lastAddedObj = addToItemsPool(x, z, "BoostSphere", targetTransform);
+                        type = "Obstacles";
+                        break;
+                }
+            }
+        }
+
+        return lastAddedObj;
+    }
+
+    private GameObject addToItemsPool(float x, float z, string type, Transform targetTransform)
+    {
+        Debug.Log("Spawning at Z,X value " + x + "," + z + " of type " + type );
+
         z = z + targetTransform.position.z - targetTransform.localScale.z * 5;
         // Debug.Log("Value of Z for new object = " + z);
         Queue<GameObject> objPool = null;
@@ -221,7 +249,7 @@ public class ItemsSpawner : MonoBehaviour
         if (objPool == null || objPrefab == null)
         {
             Debug.LogError("UnMatched type of Item is to be generated.");
-            return;
+            return null;
         }
 
         GameObject objHolder = null;
@@ -234,13 +262,15 @@ public class ItemsSpawner : MonoBehaviour
         else
         {
             // Debug.Log("Creating new gameobject");
-            objHolder = Instantiate(objPrefab, new Vector3(x, 0, z), Quaternion.identity);
+            objHolder = Instantiate(objPrefab, new Vector3(x, 0.0f, z), Quaternion.identity);
         }
         // Debug.Log("Current Transform z = " + targetTransform.position.z);
         objHolder.transform.SetParent(targetTransform, true);
         objHolder.SetActive(true);
         // objHolder.GetComponent<Collider>().enabled = true;
         coinsPool.Enqueue(objHolder);
+
+        return objHolder;
     }
 
     public void unPause()
